@@ -18,6 +18,8 @@ HEADERS += \
 FORMS += \
     dashboard.ui
 
+LIBS += -lstdc++
+
 TRANSLATIONS += \
     Dashboard_en_US.ts
 CONFIG += lrelease

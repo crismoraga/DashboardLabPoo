@@ -1,21 +1,42 @@
-#include "dashboard.h"
-
 #include <QApplication>
-#include <QLocale>
-#include <QTranslator>
 #include <QWidget>
 #include <QGridLayout>
-#include <QLineEdit>
-#include <QPushButton>
-#include <QMessageBox>
 #include <QLabel>
-#include <QTime>
+#include <QPushButton>
+#include <QLineEdit>
 #include <QFormLayout>
+#include <QMessageBox>
+#include <QPalette>
+#include <QGridLayout>
+#include <QComboBox>
 
-int main(int argc, char *argv[])
-{
-    QApplication a(argc, argv);
+class BloqueLabel : public QLabel {
+public:
+    BloqueLabel(const QString& text, const QString& horario, QWidget* parent = nullptr)
+        : QLabel(text, parent), horario(horario) {}
 
+    void setHorario(const QString& horario) {
+        this->horario = horario;
+    }
+
+    void restoreText() {
+        setText(originalText);
+    }
+
+protected:
+    void enterEvent(QEvent*) override {
+        originalText = text();
+        setText(horario);
+    }
+
+    void leaveEvent(QEvent*) override {
+        setText(originalText);
+    }
+
+private:
+    QString horario;
+    QString originalText;
+};
 
 class Asignatura {
 public:
@@ -27,50 +48,89 @@ public:
 
 class DashboardApp : public QWidget {
 public:
-    DashboardApp(QWidget *parent = nullptr) : QWidget(parent) {
-        QGridLayout *gridLayout = new QGridLayout(this);
-        for (int i = 0; i < 12; ++i) {
-            QString titulo = "Sala " + QString::number(i + 1);
-            gridLayout->addWidget(new QLabel(titulo, this), 0, i + 1);
+    DashboardApp(QWidget* parent = nullptr) : QWidget(parent) {
+        QGridLayout* gridLayout = new QGridLayout(this);
+        QPalette palette;
+
+        // Configuración de colores
+        palette.setColor(QPalette::Window, Qt::white);
+        palette.setColor(QPalette::Base, QColor(200, 200, 200));
+        palette.setColor(QPalette::AlternateBase, QColor(220, 220, 220));
+        palette.setColor(QPalette::Button, QColor(50, 150, 250));
+        palette.setColor(QPalette::ButtonText, Qt::white);
+        setPalette(palette);
+
+        // Configuración de estilo para el botón
+        QString buttonStyle = "background-color: rgb(50, 150, 250); color: white; padding: 5px 10px;";
+
+        QStringList bloqueLabels = {
+            "1-2", "3-4", "5-6", "7-8", "Almuerzo", "9-10", "11-12", "13-14", "15-16", "17-18"
+        };
+
+        QStringList horarioLabels = {
+            "8:15 - 9:25", "9:35 - 10:45", "10:55 - 12:05", "12:15 - 13:25", "13:25 - 14:30",
+            "14:30 - 15:40", "15:50 - 17:00", "17:10 - 18:20", "18:30 - 19:40"
+        };
+
+        for (int i = 0; i < bloqueLabels.size() && i < horarioLabels.size(); ++i) {
+            BloqueLabel* bloqueLabel = new BloqueLabel(bloqueLabels[i], horarioLabels[i], this);
+            bloqueLabel->setStyleSheet("background-color: rgba(50, 150, 250, 0.2);");
+            gridLayout->addWidget(bloqueLabel, i + 1, 0);
         }
 
-        for (int i = 0; i < 28; ++i) {
-            QString hora = QTime(8, 15).addSecs(i * 60 * 10).toString("hh:mm");
-            gridLayout->addWidget(new QLabel(hora, this), i + 1, 0);
-        }
+        QStringList salaLabels = {
+            "Sala 1", "Sala 2", "Sala 3", "Sala 4", "Sala 5", "Sala 6",
+            "Sala 7", "Sala 8", "Sala 9", "Sala 10", "Sala 11", "Sala 12"
+        };
 
-        //podriamos cambiar las horas por bloques
+        for (int i = 0; i < salaLabels.size(); ++i) {
+            QLabel* salaLabel = new QLabel(salaLabels[i], this);
+            salaLabel->setStyleSheet("background-color: rgba(50, 150, 250, 0.2);");
+            gridLayout->addWidget(salaLabel, 0, i + 1);
+        }
 
         // Botón para crear nueva petición
-        QPushButton *nuevaPeticionBtn = new QPushButton("Crear nueva petición", this);
+        QPushButton* nuevaPeticionBtn = new QPushButton("Crear nueva petición", this);
+        nuevaPeticionBtn->setStyleSheet(buttonStyle);
         connect(nuevaPeticionBtn, &QPushButton::clicked, this, &DashboardApp::crearNuevaPeticion);
-        gridLayout->addWidget(nuevaPeticionBtn, 30, 0);
+        gridLayout->addWidget(nuevaPeticionBtn, bloqueLabels.size() + 1, 0, 1, salaLabels.size() + 1);
     }
+
 private:
-     QMap<QString, Asignatura> asignaturasProgramadas;
+    QMap<QString, Asignatura> asignaturasProgramadas;
     QMap<QMap<QString, Asignatura>, QString> asignaturasDia;
 
-private slots:
     void crearNuevaPeticion() {
         QDialog dialog(this);
         QFormLayout formLayout(&dialog);
 
-        QLineEdit *horarioLineEdit = new QLineEdit(&dialog);
-        QLineEdit *asignaturaLineEdit = new QLineEdit(&dialog);
-        QLineEdit *salaLineEdit = new QLineEdit(&dialog);
+        QComboBox* bloqueComboBox = new QComboBox(&dialog);
+        bloqueComboBox->addItems({
+            "1-2", "3-4", "5-6", "7-8", "9-10", "11-12", "13-14", "15-16", "17-18"
+        });
 
-        formLayout.addRow("Horario:", horarioLineEdit);
-        formLayout.addRow("Asignatura:", asignaturaLineEdit);
-        formLayout.addRow("Número de sala:", salaLineEdit);
+        QComboBox* asignaturaComboBox = new QComboBox(&dialog);
+        asignaturaComboBox->addItems(getAsignaturasDisponibles());
 
-        QPushButton *aceptarBtn = new QPushButton("Aceptar", &dialog);
+        QComboBox* salaComboBox = new QComboBox(&dialog);
+        salaComboBox->addItems({
+            "Sala 1", "Sala 2", "Sala 3", "Sala 4", "Sala 5", "Sala 6",
+            "Sala 7", "Sala 8", "Sala 9", "Sala 10", "Sala 11", "Sala 12"
+        });
+
+        formLayout.addRow("Bloque:", bloqueComboBox);
+        formLayout.addRow("Asignatura:", asignaturaComboBox);
+        formLayout.addRow("Número de sala:", salaComboBox);
+
+        QPushButton* aceptarBtn = new QPushButton("Aceptar", &dialog);
+        aceptarBtn->setStyleSheet("background-color: rgb(50, 150, 250); color: white; padding: 5px 10px;");
         connect(aceptarBtn, &QPushButton::clicked, [&]() {
-            QString horario = horarioLineEdit->text();
-            QString asignatura = asignaturaLineEdit->text();
-            int numeroSala = salaLineEdit->text().toInt();
+            QString bloque = bloqueComboBox->currentText();
+            QString asignatura = asignaturaComboBox->currentText();
+            QString sala = salaComboBox->currentText();
 
             // Verificar disponibilidad de la sala y horario
-            if (esHorarioDisponible(horario, numeroSala)) {
+            if (esHorarioDisponible(bloque, sala)) {
                 Asignatura nuevaAsignatura;
                 nuevaAsignatura.profesor = "Nombre del profesor";
                 nuevaAsignatura.cantidadAlumnos = 50;
@@ -80,7 +140,7 @@ private slots:
                 // Agregar la asignatura a la grilla
                 QMessageBox::information(this, "Petición creada", "Petición agregada correctamente");
             } else {
-                QMessageBox::warning(this, "Error", "La sala no está disponible en ese horario");
+                QMessageBox::warning(this, "Error", "La sala no está disponible en ese bloque");
             }
 
             dialog.accept();
@@ -91,19 +151,26 @@ private slots:
         dialog.exec();
     }
 
-    bool esHorarioDisponible(const QString& horario, int numeroSala) {
+    QStringList getAsignaturasDisponibles() {
+        QStringList asignaturas;
+        // Agregar asignaturas disponibles aquí
+        asignaturas.append("Matemáticas");
+        asignaturas.append("Física");
+        asignaturas.append("Química");
+        return asignaturas;
+    }
 
-        QString clave = QString::number(numeroSala) + horario;
-        if (asignaturasProgramadas.contains(clave)) {
-            return false;  // Sala ocupada en el horario especificado
-        }
-
-        return true;  // Sala disponible en el horario especificado
+    bool esHorarioDisponible(const QString& bloque, const QString& sala) {
+        // Verificar disponibilidad de sala y bloque aquí
+        return true;  // Sala disponible en el bloque especificado
     }
 };
 
-DashboardApp dashboard;
-dashboard.show();
+int main(int argc, char* argv[]) {
+    QApplication a(argc, argv);
+
+    DashboardApp dashboard;
+    dashboard.show();
 
     return a.exec();
 }
