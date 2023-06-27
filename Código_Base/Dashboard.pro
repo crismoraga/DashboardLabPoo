@@ -21,8 +21,6 @@ HEADERS += \
 
 FORMS +=
 
-LIBS += -lstdc++
-
 TRANSLATIONS += \
     Dashboard_en_US.ts
 CONFIG += lrelease
