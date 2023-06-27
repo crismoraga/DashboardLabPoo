@@ -3,10 +3,12 @@
 
 #include <QtCore/qglobal.h>
 
-class Asignatura
-{
+class Asignatura {
 public:
-    Asignatura();
+    QString profesor;
+    int cantidadAlumnos;
+    QString departamento;
+    QString sigla;
 };
 
 #endif // ASIGNATURA_H

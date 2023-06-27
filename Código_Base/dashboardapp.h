@@ -3,10 +3,18 @@
 
 #include <QtCore/qglobal.h>
 
-class DashboardApp
-{
+class DashboardApp : public QWidget {
 public:
-    DashboardApp();
-};
+    DashboardApp(QWidget* parent = nullptr);
 
+private:
+    QMap<QString, Asignatura> asignaturasProgramadas;
+    QMap<QString, QString> asignaturasDia; // Sala y bloque ocupados
+
+    void crearNuevaPeticion();
+
+    QStringList getAsignaturasDisponibles();
+
+    bool esHorarioDisponible(const QString& bloque, const QString& sala);
+};
 #endif // DASHBOARDAPP_H
