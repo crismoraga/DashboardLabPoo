@@ -9,6 +9,7 @@
 #include <QPalette>
 #include <QGridLayout>
 #include <QComboBox>
+#include <QDebug>
 
 class BloqueLabel : public QLabel {
 public:
@@ -91,7 +92,7 @@ public:
 
         // Botón para crear nueva petición
         QPushButton* nuevaPeticionBtn = new QPushButton("Crear nueva petición", this);
-        nuevaPeticionBtn->setStyleSheet(buttonStyle);
+                                        nuevaPeticionBtn->setStyleSheet(buttonStyle);
         connect(nuevaPeticionBtn, &QPushButton::clicked, this, &DashboardApp::crearNuevaPeticion);
         gridLayout->addWidget(nuevaPeticionBtn, bloqueLabels.size() + 1, 0, 1, salaLabels.size() + 1);
     }
@@ -122,7 +123,7 @@ private:
         formLayout.addRow("Asignatura:", asignaturaComboBox);
         formLayout.addRow("Número de sala:", salaComboBox);
 
-        QPushButton* aceptarBtn = new QPushButton("Aceptar", &dialog);
+            QPushButton* aceptarBtn = new QPushButton("Aceptar", &dialog);
         aceptarBtn->setStyleSheet("background-color: rgb(50, 150, 250); color: white; padding: 5px 10px;");
         connect(aceptarBtn, &QPushButton::clicked, [&]() {
             QString bloque = bloqueComboBox->currentText();
@@ -137,40 +138,55 @@ private:
                 nuevaAsignatura.departamento = "Departamento";
                 nuevaAsignatura.sigla = asignatura;
 
-                // Agregar la asignatura a la grilla
-                QMessageBox::information(this, "Petición creada", "Petición agregada correctamente");
+                // Verificar si el horario ya está ocupado
+                if (asignaturasDia.contains(sala)) {
+                    QMap<QString, Asignatura> asignaturasEnDia = asignaturasDia.value(sala);
+                    if (asignaturasEnDia.contains(bloque)) {
+                        QMessageBox::warning(this, "Error", "El horario ya está ocupado en esa sala");
+                            return;
+                    }
+                }
+
+                asignaturasProgramadas.insert(asignatura, nuevaAsignatura);
+                asignaturasDia[sala].insert(bloque, nuevaAsignatura);
+
+                BloqueLabel* bloqueLabel = findChild<BloqueLabel*>(bloque);
+                if (bloqueLabel) {
+                    bloqueLabel->setStyleSheet("background-color: rgba(50, 150, 250, 0.6);");
+                    bloqueLabel->setHorario(asignatura);
+                    bloqueLabel->setToolTip(asignatura);
+                }
+
+                QMessageBox::information(this, "Éxito", "Asignatura programada exitosamente");
+                    dialog.accept();
             } else {
-                QMessageBox::warning(this, "Error", "La sala no está disponible en ese bloque");
+                QMessageBox::warning(this, "Error", "La sala ya está ocupada en ese horario");
             }
-
-            dialog.accept();
         });
-
         formLayout.addRow(aceptarBtn);
 
         dialog.exec();
     }
 
-    QStringList getAsignaturasDisponibles() {
-        QStringList asignaturas;
-        // Agregar asignaturas disponibles aquí
-        asignaturas.append("Matemáticas");
-        asignaturas.append("Física");
-        asignaturas.append("Química");
-        return asignaturas;
+    QStringList getAsignaturasDisponibles() const {
+        // Simulación de obtención de asignaturas disponibles desde una fuente de datos
+        return {"Matemáticas", "Física", "Historia", "Química", "Biología"};
     }
 
-    bool esHorarioDisponible(const QString& bloque, const QString& sala) {
-        // Verificar disponibilidad de sala y bloque aquí
-        return true;  // Sala disponible en el bloque especificado
+    bool esHorarioDisponible(const QString& bloque, const QString& sala) const {
+        if (asignaturasDia.contains(sala)) {
+            QMap<QString, Asignatura> asignaturasEnDia = asignaturasDia.value(sala);
+            return !asignaturasEnDia.contains(bloque);
+        }
+        return true;
     }
 };
 
-int main(int argc, char* argv[]) {
-    QApplication a(argc, argv);
+int main(int argc, char** argv) {
+    QApplication app(argc, argv);
 
     DashboardApp dashboard;
     dashboard.show();
 
-    return a.exec();
+    return app.exec();
 }
