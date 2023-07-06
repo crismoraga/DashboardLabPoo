@@ -16,38 +16,41 @@
 #include <iostream>
 #include <QMenu>
 #include <QEvent>
+#include <QMouseEvent>
+#include <QMenuBar>
+#include <QAction>
 
 using namespace std;
 
-class BloqueLabel : public QLabel {
+enum DiasSemana { Lunes, Martes, Miercoles, Jueves, Viernes, Sabado };
+
+class BloqueLabel : public QLabel
+{
 public:
-    BloqueLabel(const QString& text, const QString& horario, QWidget* parent = nullptr)
-        : QLabel(text, parent), horario(horario) {}
+    BloqueLabel(const QString &text, const QString &horario, QWidget *parent = nullptr)
+        : QLabel(text, parent), horario(horario)
+    {}
 
-    void setHorario(const QString& horario) {
-        this->horario = horario;
-    }
+    void setHorario(const QString &horario) { this->horario = horario; }
 
-    void restoreText() {
-        setText(originalText);
-    }
+    void restoreText() { setText(originalText); }
 
 protected:
-    void enterEvent(QEvent*) override {
+    void enterEvent(QEvent *) override
+    {
         originalText = text();
         setText(horario);
     }
 
-    void leaveEvent(QEvent*) override {
-        setText(originalText);
-    }
+    void leaveEvent(QEvent *) override { setText(originalText); }
 
 private:
     QString horario;
     QString originalText;
 };
 
-class Asignatura {
+class Asignatura
+{
 public:
     QString profesor;
     int cantidadAlumnos;
@@ -55,10 +58,69 @@ public:
     QString sigla;
 };
 
-class DashboardApp : public QWidget {
+class DashboardApp : public QWidget
+{
 public:
-    DashboardApp(QWidget* parent = nullptr) : QWidget(parent) {
+    QComboBox* diaComboBox = new QComboBox(this);
+    void actualizarVista()
+    {
+        diaComboBox->setCurrentIndex(static_cast<int>(diaSeleccionado));
+        // Borrar todas las asignaturas cargadas previamente
+        QGridLayout *gridLayout = qobject_cast<QGridLayout *>(layout());
+        QLayoutItem *item;
+        while ((item = gridLayout->takeAt(0)) != nullptr) {
+            delete item->widget();
+            delete item;
+        }
+    }
+    void crearWidgets() {
         QGridLayout* gridLayout = new QGridLayout(this);
+        setLayout(gridLayout);
+
+        // Crear botones de días de la semana
+        QStringList diasSemanaLabels = {
+                                        "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"
+        };
+
+        for (int i = 0; i < diasSemanaLabels.size(); ++i) {
+            QPushButton* diaButton = new QPushButton(diasSemanaLabels[i], this);
+            diaButton->setCheckable(true);
+            diaButton->setChecked(i == 0); // Seleccionar el primer día por defecto
+            connect(diaButton, &QPushButton::clicked, [this, i]() {
+                diaSeleccionado = static_cast<DiasSemana>(i);
+                actualizarVista();
+            });
+            gridLayout->addWidget(diaButton, 0, i + 3);
+        }
+
+        // Agregar etiquetas de encabezado
+        QLabel* salaEncabezado = new QLabel("Sala", this);
+        QLabel* bloqueEncabezado = new QLabel("Bloque", this);
+        QLabel* horarioEncabezado = new QLabel("Horario", this);
+
+        gridLayout->addWidget(salaEncabezado, 0, 0);
+        gridLayout->addWidget(bloqueEncabezado, 0, 1);
+        gridLayout->addWidget(horarioEncabezado, 0, 2);
+
+        diaComboBox->addItems({ "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado" });
+        diaComboBox->setCurrentIndex(0); // Seleccionar el primer día por defecto
+
+        connect(diaComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &DashboardApp::cambiarDiaSeleccionado);
+
+        connect(diaComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), [this](int index) {
+            diaSeleccionado = static_cast<DiasSemana>(index);
+            actualizarVista();
+        });
+
+        gridLayout->addWidget(diaComboBox, 0, 2); // Agregar el combobox al layout
+
+        // Cargar las asignaturas para el día seleccionado
+        actualizarVista();
+    }
+
+    DashboardApp(QWidget *parent = nullptr) : QWidget(parent)
+    {
+        QGridLayout *gridLayout = new QGridLayout(this);
         QPalette palette;
 
         // Configuración de colores
@@ -108,7 +170,7 @@ public:
         //cargarPeticiones();
         mostrarAsignaturasCargadas();
 
-        QIcon icon("C:/Users/Moragax3/Desktop/Dashboard2/Dashboard/usmlogo.ico");
+        QIcon icon("usmlogo.ico");
         setWindowIcon(icon);
     }
 
@@ -120,7 +182,7 @@ public:
 private:
     QMap<QString, Asignatura> asignaturasProgramadas;
     QMap<QString, QString> asignaturasDia; // Sala y bloque ocupados
-
+    DiasSemana diaSeleccionado;
 private:
     void guardarPeticiones() {
         QFile file("peticiones.txt");
@@ -162,7 +224,9 @@ private:
                 int columna = partes[1].toInt();
                 QLabel* asignaturaLabel = new QLabel(asignatura, this);
                 asignaturaLabel->setStyleSheet("background-color: rgba(50, 150, 250, 0.2);");
-                gridLayout->addWidget(asignaturaLabel, fila, columna);
+                if (columna == diaSeleccionado + 1) { // Mostrar solo para el día seleccionado
+                    gridLayout->addWidget(asignaturaLabel, fila, columna);
+                }
             }
         }
     }
@@ -260,6 +324,11 @@ private:
     bool esHorarioDisponible(const QString& bloque, const QString& sala) {
         QString key = sala + bloque;
         return !asignaturasDia.contains(key); // Verificar si el bloque y sala están ocupados
+    }
+public slots:
+    void cambiarDiaSeleccionado(int index) {
+        diaSeleccionado = static_cast<DiasSemana>(index);
+        actualizarVista();
     }
 };
 

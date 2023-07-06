@@ -1,6 +1,6 @@
-QT       += core gui
-QT += widgets
-#greaterThan(QT_MAJOR_VERSION, 4):
+QT       += widgets
+
+greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 CONFIG += c++11
 
@@ -9,17 +9,14 @@ CONFIG += c++11
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
-    asignatura.cpp \
-    bloquelabel.cpp \
-    dashboardapp.cpp \
-    main.cpp
+    main.cpp \
+    dashboard.cpp
 
 HEADERS += \
-    asignatura.h \
-    bloquelabel.h \
-    dashboardapp.h
+    dashboard.h
 
-FORMS +=
+FORMS += \
+    dashboard.ui
 
 TRANSLATIONS += \
     Dashboard_en_US.ts
